@@ -36,6 +36,10 @@ public class MainActivity extends ComponentActivity {
     public static final String CHANNEL_ID = "novos_pedidos_v2";
     private static final String FCM_TOPIC = "novos_pedidos";
 
+    // Painel oficial online. Alterações de HTML/CSS/JS publicadas no Netlify
+    // passam a aparecer no APK sem precisar gerar/reinstalar outro APK.
+    private static final String PANEL_URL = "https://acaida7-painel.netlify.app/";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,10 +49,16 @@ public class MainActivity extends ComponentActivity {
         webView = new WebView(this);
         configureWebView(webView);
         setContentView(webView, new ViewGroup.LayoutParams(-1, -1));
-        webView.loadUrl("file:///android_asset/index.html");
+        loadPanel();
 
         subscribeToNewOrders();
         handleIntent(getIntent());
+    }
+
+    private void loadPanel() {
+        if (webView == null) return;
+        webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
+        webView.loadUrl(PANEL_URL);
     }
 
     private void requestNotificationPermission() {
@@ -102,10 +112,10 @@ public class MainActivity extends ComponentActivity {
         wv.addJavascriptInterface(new NativeBridge(this), "NativeBridge");
         wv.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return openExternal(request.getUrl().toString());
+                return handleUrl(request.getUrl().toString());
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return openExternal(url);
+                return handleUrl(url);
             }
         });
         wv.setWebChromeClient(new WebChromeClient() {
@@ -123,9 +133,22 @@ public class MainActivity extends ComponentActivity {
         });
     }
 
-    private boolean openExternal(String url) {
+    private boolean handleUrl(String url) {
         if (url == null) return false;
+        Uri uri = Uri.parse(url);
+        String host = uri.getHost();
+
+        // Mantém a navegação do próprio painel dentro do APK.
+        if (url.startsWith(PANEL_URL) ||
+                (host != null && host.equals("acaida7-painel.netlify.app"))) {
+            return false;
+        }
+
         if (url.startsWith("file://")) return false;
+        return openExternal(url);
+    }
+
+    private boolean openExternal(String url) {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
             return true;
