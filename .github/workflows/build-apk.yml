@@ -5,9 +5,15 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: 1.0.${{ github.run_number }}
 
     steps:
       - name: Baixar projeto
@@ -26,11 +32,30 @@ jobs:
 
       - name: Compilar APK
         working-directory: ACAI_DA_7_PAINEL_ANDROID_FCM_PROJETO/AcaiDa7PainelApp
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon assembleDebug -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME"
+
+      - name: Preparar APK para atualização
+        run: cp ACAI_DA_7_PAINEL_ANDROID_FCM_PROJETO/AcaiDa7PainelApp/app/build/outputs/apk/debug/app-debug.apk AcaiDa7-Painel-APK.apk
 
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
           name: AcaiDa7-Painel-APK
-          path: ACAI_DA_7_PAINEL_ANDROID_FCM_PROJETO/AcaiDa7PainelApp/app/build/outputs/apk/debug/app-debug.apk
+          path: AcaiDa7-Painel-APK.apk
           if-no-files-found: error
+
+      - name: Atualizar release estável
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view latest >/dev/null 2>&1; then
+            gh release create latest \
+              --target "$GITHUB_SHA" \
+              --title "Açaí da 7 — Atualização" \
+              --notes "VERSION_NAME=$VERSION_NAME"
+          else
+            gh release edit latest \
+              --title "Açaí da 7 — Atualização" \
+              --notes "VERSION_NAME=$VERSION_NAME"
+          fi
+          gh release upload latest AcaiDa7-Painel-APK.apk --clobber
