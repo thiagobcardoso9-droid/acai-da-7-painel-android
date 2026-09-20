@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Açaí da 7 • Painel</string>
+    <string name="default_notification_channel_name">Novos pedidos</string>
+    <string name="default_notification_channel_description">Alertas de novos pedidos da Açaí da 7</string>
+</resources>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "63398123504",
+    "project_id": "acaida7",
+    "storage_bucket": "acaida7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:63398123504:android:63e6f0fd26465678b6ef35",
+        "android_client_info": {
+          "package_name": "com.acaida7.painel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTGnzKURGOMWSnsMTXsoVkjETQgg_eNYQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

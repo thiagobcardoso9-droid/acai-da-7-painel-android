@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.AcaiDa7Painel" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#B51CFF</item>
+        <item name="android:navigationBarColor">#090510</item>
+        <item name="android:statusBarColor">#090510</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
