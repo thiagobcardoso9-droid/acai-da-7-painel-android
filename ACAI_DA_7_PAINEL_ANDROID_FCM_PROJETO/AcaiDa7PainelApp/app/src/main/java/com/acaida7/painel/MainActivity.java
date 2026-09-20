@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,34 +30,61 @@ public class MainActivity extends ComponentActivity {
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
     private ActivityResultLauncher<String> notificationPermissionLauncher;
-    private static final String CHANNEL_ID = "novos_pedidos";
+
+    // Canal V2: usar um ID novo garante que aparelhos que já criaram o canal antigo
+    // não mantenham configurações antigas de som/silêncio.
+    public static final String CHANNEL_ID = "novos_pedidos_v2";
     private static final String FCM_TOPIC = "novos_pedidos";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         createNotificationChannel();
-
-        notificationPermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(), granted -> {});
-
-        if (Build.VERSION.SDK_INT >= 33 &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
-        }
+        requestNotificationPermission();
 
         webView = new WebView(this);
         configureWebView(webView);
         setContentView(webView, new ViewGroup.LayoutParams(-1, -1));
         webView.loadUrl("file:///android_asset/index.html");
 
+        subscribeToNewOrders();
+        handleIntent(getIntent());
+    }
+
+    private void requestNotificationPermission() {
+        notificationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(), granted -> {
+                    if (granted) {
+                        subscribeToNewOrders();
+                    }
+                });
+
+        if (Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                        != PackageManager.PERMISSION_GRANTED) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+        }
+    }
+
+    private void subscribeToNewOrders() {
         FirebaseMessaging.getInstance().subscribeToTopic(FCM_TOPIC)
-                .addOnFailureListener(e -> {});
+                .addOnSuccessListener(unused -> getPreferences(MODE_PRIVATE)
+                        .edit().putBoolean("fcm_topic_ok", true).apply())
+                .addOnFailureListener(e -> getPreferences(MODE_PRIVATE)
+                        .edit().putBoolean("fcm_topic_ok", false).apply());
 
         FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token ->
                 getPreferences(MODE_PRIVATE).edit().putString("fcm_token", token).apply());
+    }
 
-        handleIntent(getIntent());
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (Build.VERSION.SDK_INT < 33 ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                        == PackageManager.PERMISSION_GRANTED) {
+            subscribeToNewOrders();
+        }
     }
 
     private void configureWebView(WebView wv) {
@@ -134,17 +162,24 @@ public class MainActivity extends ComponentActivity {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+
+            NotificationChannel existing = nm.getNotificationChannel(CHANNEL_ID);
+            if (existing != null) return;
+
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    getString(com.acaida7.painel.R.string.default_notification_channel_name),
+                    "Novos pedidos",
                     NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription(getString(com.acaida7.painel.R.string.default_notification_channel_description));
+            channel.setDescription("Alertas de novos pedidos do Açaí da 7");
             channel.enableVibration(true);
-            channel.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.novo_pedido),
-                    new android.media.AudioAttributes.Builder()
-                            .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+            channel.setVibrationPattern(new long[]{0, 300, 150, 500, 150, 700});
+            channel.setSound(
+                    Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.novo_pedido),
+                    new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                             .build());
-            NotificationManager nm = getSystemService(NotificationManager.class);
             nm.createNotificationChannel(channel);
         }
     }
