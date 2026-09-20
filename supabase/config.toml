@@ -1,0 +1,2 @@
+[functions.fcm-novo-pedido]
+verify_jwt = false
