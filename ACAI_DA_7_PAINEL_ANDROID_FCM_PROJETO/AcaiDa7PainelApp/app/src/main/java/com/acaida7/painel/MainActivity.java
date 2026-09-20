@@ -30,6 +30,7 @@ public class MainActivity extends ComponentActivity {
     private ValueCallback<Uri[]> fileCallback;
     private ActivityResultLauncher<String> notificationPermissionLauncher;
     private static final String CHANNEL_ID = "novos_pedidos";
+    private static final String FCM_TOPIC = "novos_pedidos";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +49,9 @@ public class MainActivity extends ComponentActivity {
         configureWebView(webView);
         setContentView(webView, new ViewGroup.LayoutParams(-1, -1));
         webView.loadUrl("file:///android_asset/index.html");
+
+        FirebaseMessaging.getInstance().subscribeToTopic(FCM_TOPIC)
+                .addOnFailureListener(e -> {});
 
         FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token ->
                 getPreferences(MODE_PRIVATE).edit().putString("fcm_token", token).apply());
