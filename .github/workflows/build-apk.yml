@@ -38,12 +38,29 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Compilar APK
+      - name: Preparar assinatura permanente
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || (echo "KEYSTORE_BASE64 não configurado" && exit 1)
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/signing-key.jks"
+          chmod 600 "$GITHUB_WORKSPACE/signing-key.jks"
+
+      - name: Compilar APK Release assinado
         working-directory: ACAI_DA_7_PAINEL_ANDROID_FCM_PROJETO/AcaiDa7PainelApp
-        run: gradle --no-daemon assembleDebug -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME"
+        env:
+          KEYSTORE_FILE: ${{ github.workspace }}/signing-key.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_PASSWORD" || (echo "KEYSTORE_PASSWORD não configurado" && exit 1)
+          test -n "$KEY_ALIAS" || (echo "KEY_ALIAS não configurado" && exit 1)
+          test -n "$KEY_PASSWORD" || (echo "KEY_PASSWORD não configurado" && exit 1)
+          gradle --no-daemon assembleRelease -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME"
 
       - name: Preparar APK para atualização
-        run: cp ACAI_DA_7_PAINEL_ANDROID_FCM_PROJETO/AcaiDa7PainelApp/app/build/outputs/apk/debug/app-debug.apk AcaiDa7-Painel-APK.apk
+        run: cp ACAI_DA_7_PAINEL_ANDROID_FCM_PROJETO/AcaiDa7PainelApp/app/build/outputs/apk/release/app-release.apk AcaiDa7-Painel-APK.apk
 
       - name: Publicar APK
         uses: actions/upload-artifact@v4
@@ -67,3 +84,7 @@ jobs:
               --notes "VERSION_NAME=$VERSION_NAME"
           fi
           gh release upload latest AcaiDa7-Painel-APK.apk --clobber
+
+      - name: Remover chave de assinatura do runner
+        if: always()
+        run: rm -f "$GITHUB_WORKSPACE/signing-key.jks"
