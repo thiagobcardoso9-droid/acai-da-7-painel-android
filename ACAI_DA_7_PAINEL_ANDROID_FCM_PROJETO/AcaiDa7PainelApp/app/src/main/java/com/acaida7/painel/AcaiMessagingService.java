@@ -33,6 +33,23 @@ public class AcaiMessagingService extends FirebaseMessagingService {
         return Math.max(1, Math.min(50, n));
     }
 
+    private int getSoundFromMessage(RemoteMessage message) {
+        String value = message.getData().get("sound_id");
+        if (value == null) value = message.getData().get("tone_id");
+        if (value != null) {
+            try {
+                int n = Integer.parseInt(value.trim());
+                if (n >= 1 && n <= 50) {
+                    // The server is the source of truth so computer and phone can share
+                    // the same selected sound. Cache it locally for the next notification.
+                    getSharedPreferences(PREFS_NATIVE, MODE_PRIVATE).edit().putInt(PREF_SOUND, n).apply();
+                    return n;
+                }
+            } catch (Exception ignored) { }
+        }
+        return getSelectedSound();
+    }
+
     private String channelId(int sound) {
         return CHANNEL_PREFIX + String.format(java.util.Locale.US, "%02d", sound);
     }
@@ -44,7 +61,7 @@ public class AcaiMessagingService extends FirebaseMessagingService {
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage message) {
-        int selectedSound = getSelectedSound();
+        int selectedSound = getSoundFromMessage(message);
         createNotificationChannel(selectedSound);
 
         String title = message.getData().get("title");
