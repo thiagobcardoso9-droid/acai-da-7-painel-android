@@ -129,6 +129,27 @@ public class MainActivity extends ComponentActivity {
     private boolean handleUrl(String url) { if(url==null)return false; Uri uri=Uri.parse(url); String host=uri.getHost(); if(host!=null&&host.equals("acaida7-painel.netlify.app"))return false; if(url.startsWith("file://"))return false; return openExternal(url); }
     private boolean openExternal(String url) { try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));return true;}catch(Exception e){Toast.makeText(this,"Não foi possível abrir o link",Toast.LENGTH_SHORT).show();return true;} }
 
+    // Abre o WhatsApp fora do WebView, permitindo que o Android encaminhe para o app instalado.
+    public void openWhatsappUrl(String url) {
+        runOnUiThread(() -> {
+            try {
+                Uri uri = Uri.parse(url);
+                String host = uri.getHost();
+                boolean allowed = "https".equalsIgnoreCase(uri.getScheme())
+                        && ("wa.me".equalsIgnoreCase(host)
+                        || "api.whatsapp.com".equalsIgnoreCase(host)
+                        || "web.whatsapp.com".equalsIgnoreCase(host));
+                if (!allowed) {
+                    Toast.makeText(this, "Link do WhatsApp inválido.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                openExternal(url);
+            } catch (Exception e) {
+                Toast.makeText(this, "Não foi possível abrir o WhatsApp.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     public int getNotificationSound(){int n=getSharedPreferences(PREFS_NATIVE,MODE_PRIVATE).getInt(PREF_SOUND,1);return Math.max(1,Math.min(50,n));}
     public void setNotificationSound(int number){int n=Math.max(1,Math.min(50,number));int old=getNotificationSound();getSharedPreferences(PREFS_NATIVE,MODE_PRIVATE).edit().putInt(PREF_SOUND,n).apply();if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){NotificationManager nm=getSystemService(NotificationManager.class);if(old!=n){try{nm.deleteNotificationChannel(channelId(old));}catch(Exception ignored){}}createNotificationChannel(n);}}
     private String channelId(int sound){return CHANNEL_PREFIX+String.format(java.util.Locale.US,"%02d",sound);}
@@ -166,5 +187,6 @@ public class MainActivity extends ComponentActivity {
         @android.webkit.JavascriptInterface public void openNotificationSettings(){activity.runOnUiThread(activity::openNotificationSettings);}
         @android.webkit.JavascriptInterface public void printHtml(String html){activity.printHtml(html);}
         @android.webkit.JavascriptInterface public void showToast(String text){activity.runOnUiThread(()->Toast.makeText(activity,text,Toast.LENGTH_SHORT).show());}
+        @android.webkit.JavascriptInterface public void openWhatsappUrl(String url){activity.openWhatsappUrl(url);}
     }
 }
