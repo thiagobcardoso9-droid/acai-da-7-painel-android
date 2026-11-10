@@ -803,7 +803,11 @@ background:#1b0c29;color:#fff;font-size:18px;box-shadow:0 0 14px rgba(181,28,255
 
 <div id="toast" class="toast hidden"></div>
 <script>
-const SUPABASE_URL='https://mkuekafoolfxppffjlyh.supabase.co',SUPABASE_KEY='sb_publishable_E3YkmLkDfiPwf_EMoKQUnQ_qKqC3gI4',sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);let pendingImage='',pendingLogo='';
+const SUPABASE_URL='https://mkuekafoolfxppffjlyh.supabase.co',SUPABASE_KEY='sb_publishable_E3YkmLkDfiPwf_EMoKQUnQ_qKqC3gI4';
+const IS_NATIVE_APP=!!(window.NativeBridge&&typeof NativeBridge.isNativeApp==='function'&&NativeBridge.isNativeApp()==='true');
+const AUTH_STORAGE=IS_NATIVE_APP?window.localStorage:window.sessionStorage;
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storage:AUTH_STORAGE,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+let pendingImage='',pendingLogo='';
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.remove('hidden');setTimeout(()=>e.classList.add('hidden'),2500)}
 async function login(){unlockAlarmAudio();
@@ -2171,6 +2175,7 @@ function openCustomerWhatsapp(order,status){
   if(!phone || phone==='55')return toast('O pedido não possui um WhatsApp válido');
   const text=statusWhatsappMessage(order,status);
   const url='https://wa.me/'+phone+'?text='+encodeURIComponent(text);
+  if(window.NativeBridge&&typeof NativeBridge.openWhatsappUrl==='function'){NativeBridge.openWhatsappUrl(url);return;}
   window.open(url,'_blank');
 }
 
@@ -2197,7 +2202,9 @@ function sendStatusWhatsapp(){
   const params=new URLSearchParams();
   params.set('phone',phone);
   params.set('text',text);
-  window.open('https://api.whatsapp.com/send?'+params.toString(),'_blank');
+  const url='https://api.whatsapp.com/send?'+params.toString();
+  if(window.NativeBridge&&typeof NativeBridge.openWhatsappUrl==='function'){NativeBridge.openWhatsappUrl(url);return;}
+  window.open(url,'_blank');
 }
 async function handleCustomerStatusChannel(order,status){
   if(!['preparo','rota','cancelado'].includes(status))return;
